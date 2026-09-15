@@ -178,6 +178,7 @@ App 内也有一份：抽屉 → `快捷键一览`，不用翻这个文件。
 
 仓库里有两份给接手者的文档：
 
+- [`CHANGELOG.md`](CHANGELOG.md) —— 每个版本做了什么、为什么
 - [`CLAUDE.md`](CLAUDE.md) —— 架构、桥接口、必须遵守的约束
 - [`NAVIGATION_PLAN.md`](NAVIGATION_PLAN.md) —— 导航重构的完整过程和每个决定的原因
 - [`DEVELOPMENT_PROCESS.md`](DEVELOPMENT_PROCESS.md) —— 更早的设计历史和测试流程
