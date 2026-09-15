@@ -171,6 +171,7 @@ public class MainActivity extends Activity {
     private TextView drawerAvatar;
     private TextView drawerHandle;
     private TextView zoomValue;
+    private TextView debugLine;
     private final List<TextView> drawerTexts = new ArrayList<>();
     private String profileHandle = "";
     private int themeMode = 0;
@@ -357,6 +358,12 @@ public class MainActivity extends Activity {
         addDrawerAction("快捷键一览", this::openShortcuts);
 
         drawerPanel.addView(divider());
+        debugLine = new TextView(this);
+        debugLine.setTextSize(9);
+        debugLine.setPadding(dp(18), dp(6), dp(18), 0);
+        debugLine.setText(versionLine() + " · 等待滚动");
+        drawerPanel.addView(debugLine);
+        drawerTexts.add(debugLine);
         drawerPanel.addView(buildLayoutRow());
         drawerPanel.addView(buildThemeRow());
         drawerPanel.addView(buildZoomRow());
@@ -489,6 +496,14 @@ public class MainActivity extends Activity {
         });
         drawerList.addView(item);
         drawerTexts.add(item);
+    }
+
+    private String versionLine() {
+        try {
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            return "v?";
+        }
     }
 
     private View buildLayoutRow() {
@@ -1609,6 +1624,13 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void profileChanged(String handle) {
             runOnUiThread(() -> setProfileHandle(handle));
+        }
+
+        @JavascriptInterface
+        public void debugInfo(String text) {
+            runOnUiThread(() -> {
+                if (debugLine != null) debugLine.setText(versionLine() + " · " + text);
+            });
         }
 
         @JavascriptInterface

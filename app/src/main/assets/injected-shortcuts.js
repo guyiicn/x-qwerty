@@ -79,11 +79,15 @@
   const scrollTop = () => window.scrollY || document.documentElement.scrollTop || 0;
 
   // X 的时间线是内部容器在滚，原生的 WebView.setOnScrollChangeListener 完全收不到。
-  // 用捕获阶段监听 document，整页滚动和容器滚动都能抓到。
+  // 用捕获阶段监听 document —— scroll 不冒泡，但捕获阶段能抓到任意元素的滚动。
   let lastBarState = null;
-  let lastScrollTarget = null;
+  let scrollEvents = 0;
+  let lastScrollDesc = "-";
   let lastScrollPos = 0;
-  let lastScrollAt = 0;
+  let upAccum = 0;
+  // 页面上可能有多个元素各自在滚，必须按元素分别记位置，
+  // 用单个变量存"上一个滚动目标"会导致每次事件都在重置基准，永远算不出差值。
+  const scrollPositions = new WeakMap();
   const reportBar = (show) => {
     if (show === lastBarState) return;
     lastBarState = show;
@@ -93,35 +97,49 @@
   };
   const resetBarTracking = () => {
     lastBarState = null;
-    lastScrollTarget = null;
-    lastScrollPos = 0;
+    upAccum = 0;
     reportBar(true);
   };
   const positionOf = (target) => {
-    if (!target || target === document || target === window) return scrollTop();
-    return typeof target.scrollTop === "number" ? target.scrollTop : scrollTop();
+    if (!target || target === document || target === window) {
+      return window.scrollY || document.documentElement.scrollTop || 0;
+    }
+    return typeof target.scrollTop === "number" ? target.scrollTop : 0;
+  };
+  const describe = (target) => {
+    if (!target || target === document) return "document";
+    if (target === window) return "window";
+    const tag = (target.tagName || "?").toLowerCase();
+    const cls = (typeof target.className === "string" ? target.className : "").trim().split(/\s+/)[0] || "";
+    return cls ? tag + "." + cls.slice(0, 14) : tag;
   };
   document.addEventListener("scroll", (event) => {
     const target = event.target;
     const pos = positionOf(target);
-    // 换了滚动容器时基准要重来，否则两个容器的坐标系会算出垃圾差值
-    if (target !== lastScrollTarget) {
-      lastScrollTarget = target;
-      lastScrollPos = pos;
-      return;
-    }
-    const now = Date.now();
-    if (now - lastScrollAt < 80) return;
-    const delta = pos - lastScrollPos;
+    const prev = scrollPositions.get(target);
+    scrollPositions.set(target, pos);
+    scrollEvents++;
+    lastScrollDesc = describe(target);
     lastScrollPos = pos;
-    lastScrollAt = now;
+    if (prev === undefined) return;
+    const delta = pos - prev;
+    if (delta === 0) return;
     if (pos <= 8) {
+      upAccum = 0;
       reportBar(true);
       return;
     }
-    if (delta > 4) reportBar(false);
-    else if (delta < -12) reportBar(true);
+    if (delta > 0) {
+      upAccum = 0;
+      reportBar(false);
+    } else {
+      upAccum -= delta;
+      if (upAccum > 24) reportBar(true);
+    }
   }, true);
+  const scrollDebug = () =>
+    "滚动事件 " + scrollEvents + " · " + lastScrollDesc + " · pos " + Math.round(lastScrollPos)
+      + " · 底栏 " + (lastBarState === null ? "-" : (lastBarState ? "显示" : "收起"));
 
   const articles = () => Array.from(document.querySelectorAll("article"));
   const visibleArticles = () => articles().filter((el) => {
@@ -548,6 +566,9 @@
     reportBadges();
     reportProfile();
     ensureSelection();
+    try {
+      if (window.AndroidShortcut && AndroidShortcut.debugInfo) AndroidShortcut.debugInfo(scrollDebug());
+    } catch (e) {}
   };
   new MutationObserver(notifyComposer).observe(document.documentElement, { childList: true, subtree: true });
   setInterval(tick, 1500);
