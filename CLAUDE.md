@@ -78,7 +78,9 @@ adb -s 127.0.0.1:5555 exec-out screencap -p > screen.png   # 别让其他 stdout
 
 **`j`/`k` 不能用 `scrollIntoView`。** 在 X 的虚拟列表里会一次跳过很多条。现在是把目标 `article` 顶部对齐到 `contentTop()` 再 `scrollBy`。
 
-**底栏布局是一组耦合的魔数**：`positionOverlay()` 的 margin、脚本里的 `contentTop()` = 78 / `contentBottom()` = innerHeight − 118、对话框的 `padding-bottom`。`setChrome()` 接口已经留好但还没下发真实数值，改底栏高度目前仍要三处一起改。
+**底栏有两种布局策略，不是简单的显隐。** `自动隐藏`：WebView `bottomMargin = 0`，底栏浮在正文上，视口完整，靠 `setChrome()` 给页面下发 `body { padding-bottom }` 让文档末尾不被压住。`常驻`：恢复 `bottomMargin = dp(BAR_HEIGHT_DP)`，页面不补 padding。改底栏高度只改 `BAR_HEIGHT_DP`，`positionOverlay()` 和 `pushChrome()` 都从它取值。
+
+脚本里的 `contentTop()` = 78 / `contentBottom()` = innerHeight − 118 仍是写死的，`j`/`k` 的落位依赖它，暂时没和 `setChrome()` 打通。
 
 **全屏视频要藏掉所有原生浮层**，进出都要调 `positionOverlay()`。
 
