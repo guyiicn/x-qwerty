@@ -157,11 +157,25 @@ redroid 里登录不了 X，未登录会一直停在登录页；信息流相关�
 
 ## 发布
 
-APK 发布到自己的静态站点，流程记在私有 runbook 里，不在本仓库。要点：
+版本信息以 GitHub Releases 为准，不在文档里另记一份（以前记过，容易和实际发布脱节）。
 
-- 每次上传后同步更新 `SHA256SUMS.txt` 和索引页
-- 上传完在服务器上跑一次 `sha256sum -c SHA256SUMS.txt`
-- 发布包一律用 `./gradlew clean assembleDebug` 产出
+```bash
+# 1. 改 app/build.gradle.kts 的 versionCode / versionName
+# 2. clean 构建（增量构建的包压缩不充分）
+./gradlew clean assembleDebug
+
+# 3. 算校验和
+A=app/build/outputs/apk/debug/app-debug.apk
+stat -c %s $A; md5sum $A; sha256sum $A
+
+# 4. 发 release，把 APK 带上
+cp $A /tmp/x-qwerty-<版本>.apk
+gh release create v<版本> /tmp/x-qwerty-<版本>.apk --title "v<版本>" --notes "..."
+```
+
+Release 说明里要写清大小、MD5、SHA256、versionCode，以及"套壳依赖 X 的 DOM、改版可能失效"的提示。
+
+另外还发一份到自建静态站点，那套流程记在私有 runbook 里，不在本仓库。
 
 ## 已知限制和后续方向
 
