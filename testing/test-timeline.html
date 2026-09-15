@@ -1,26 +1,41 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>guyii 本地假信息流</title>
 <style>
- body{margin:0;background:#000;color:#fff;font:15px system-ui}
- article{border-bottom:1px solid #2f3336;padding:18px 14px;min-height:150px}
+ html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#fff;font:15px system-ui}
+ /* 关键：整页不滚，只有这个容器滚 —— 复现 X 的真实行为。
+    原生的 WebView.setOnScrollChangeListener 对这种滚动完全无感，
+    只有注入脚本里捕获阶段的 document scroll 监听能抓到。 */
+ #scroller{height:100%;overflow-y:scroll;-webkit-overflow-scrolling:touch}
+ article{border-bottom:1px solid #2f3336;padding:18px 14px;min-height:200px}
  a{color:#1d9bf0}
- #log{position:fixed;left:0;right:0;bottom:0;background:#1d9bf0;color:#fff;
-      font-weight:700;padding:14px;text-align:center;font-size:18px}
+ #log{position:fixed;left:0;right:0;top:0;background:#1d9bf0;color:#fff;
+      font-weight:700;padding:10px;text-align:center;font-size:16px;z-index:9}
 </style></head><body>
-<div data-testid="primaryColumn">
-  <article><div>推文 A</div><a href="/alice/status/1001">2小时</a>
-    <a href="/alice/status/1001/photo/1">图片链接（不该被选中）</a></article>
-  <article><div>推文 B</div><a href="/bob/status/1002">3小时</a></article>
-  <article><div>推文 C</div><a href="/carol/status/1003">4小时</a></article>
-  <article><div>推文 D</div><a href="/dave/status/1004">5小时</a></article>
-</div>
 <div id="log">等待操作</div>
+<div id="scroller">
+  <div data-testid="primaryColumn">
+    <div style="height:44px"></div>
+    <article><div>推文 A</div><a href="/alice/status/1001">2小时</a>
+      <a href="/alice/status/1001/photo/1">图片链接（Enter 不该点中这个）</a></article>
+    <article><div>推文 B</div><a href="/bob/status/1002">3小时</a></article>
+    <article><div>推文 C</div><a href="/carol/status/1003">4小时</a></article>
+    <article><div>推文 D</div><a href="/dave/status/1004">5小时</a></article>
+    <article><div>推文 E</div><a href="/erin/status/1005">6小时</a></article>
+    <article><div>推文 F</div><a href="/frank/status/1006">7小时</a></article>
+  </div>
+</div>
 <script>
+var log = document.getElementById("log");
+var sc = document.getElementById("scroller");
+sc.addEventListener("scroll", function () {
+  log.textContent = "容器 scrollTop = " + Math.round(sc.scrollTop);
+});
 document.addEventListener("click", function (e) {
   var a = e.target.closest("a");
   if (!a) return;
   e.preventDefault();
-  document.getElementById("log").textContent = "点了 " + a.getAttribute("href");
+  log.textContent = "点了 " + a.getAttribute("href");
 }, true);
 </script>
 </body></html>

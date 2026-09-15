@@ -74,6 +74,8 @@ adb -s 127.0.0.1:5555 exec-out screencap -p > screen.png   # 别让其他 stdout
 
 **edge-to-edge 是显式打开的。** `applyEdgeToEdge()` 让 API 24–36 走同一条路径，inset 全部自己算。加浮层时记得在 `positionOverlay()` 里给它算 inset —— FAB 和抽屉都因为漏算而出过 bug。
 
+**X 的时间线是内部容器在滚，不是整页滚动。** 所以原生 `WebView.setOnScrollChangeListener` 感知不到时间线滚动，底栏的滚动隐藏靠注入脚本里**捕获阶段**的 `document` scroll 监听（`addEventListener("scroll", fn, true)`）。换滚动容器时要重置基准，否则坐标系不同会算出垃圾差值。
+
 **`j`/`k` 不能用 `scrollIntoView`。** 在 X 的虚拟列表里会一次跳过很多条。现在是把目标 `article` 顶部对齐到 `contentTop()` 再 `scrollBy`。
 
 **底栏布局是一组耦合的魔数**：`positionOverlay()` 的 margin、脚本里的 `contentTop()` = 78 / `contentBottom()` = innerHeight − 118、对话框的 `padding-bottom`。`setChrome()` 接口已经留好但还没下发真实数值，改底栏高度目前仍要三处一起改。

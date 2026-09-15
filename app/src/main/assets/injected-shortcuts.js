@@ -78,6 +78,51 @@
   };
   const scrollTop = () => window.scrollY || document.documentElement.scrollTop || 0;
 
+  // X 的时间线是内部容器在滚，原生的 WebView.setOnScrollChangeListener 完全收不到。
+  // 用捕获阶段监听 document，整页滚动和容器滚动都能抓到。
+  let lastBarState = null;
+  let lastScrollTarget = null;
+  let lastScrollPos = 0;
+  let lastScrollAt = 0;
+  const reportBar = (show) => {
+    if (show === lastBarState) return;
+    lastBarState = show;
+    try {
+      if (window.AndroidShortcut && AndroidShortcut.barVisible) AndroidShortcut.barVisible(show);
+    } catch (e) {}
+  };
+  const resetBarTracking = () => {
+    lastBarState = null;
+    lastScrollTarget = null;
+    lastScrollPos = 0;
+    reportBar(true);
+  };
+  const positionOf = (target) => {
+    if (!target || target === document || target === window) return scrollTop();
+    return typeof target.scrollTop === "number" ? target.scrollTop : scrollTop();
+  };
+  document.addEventListener("scroll", (event) => {
+    const target = event.target;
+    const pos = positionOf(target);
+    // 换了滚动容器时基准要重来，否则两个容器的坐标系会算出垃圾差值
+    if (target !== lastScrollTarget) {
+      lastScrollTarget = target;
+      lastScrollPos = pos;
+      return;
+    }
+    const now = Date.now();
+    if (now - lastScrollAt < 80) return;
+    const delta = pos - lastScrollPos;
+    lastScrollPos = pos;
+    lastScrollAt = now;
+    if (pos <= 8) {
+      reportBar(true);
+      return;
+    }
+    if (delta > 4) reportBar(false);
+    else if (delta < -12) reportBar(true);
+  }, true);
+
   const articles = () => Array.from(document.querySelectorAll("article"));
   const visibleArticles = () => articles().filter((el) => {
     const r = el.getBoundingClientRect();
@@ -318,6 +363,7 @@
     if (url === lastRoute) return;
     lastRoute = url;
     mark(null);
+    resetBarTracking();
     try {
       if (window.AndroidShortcut && AndroidShortcut.routeChanged) {
         AndroidShortcut.routeChanged(url, document.title || "", ROOT_PATHS.has(location.pathname));

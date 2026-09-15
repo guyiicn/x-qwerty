@@ -1612,6 +1612,14 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void barVisible(boolean show) {
+            runOnUiThread(() -> {
+                if (barMode != 0 || drawerOpen || shortcutsOpen || composerDialogOpen) return;
+                setBarVisible(show);
+            });
+        }
+
+        @JavascriptInterface
         public void zoom(int delta) {
             runOnUiThread(() -> setTextZoom(delta == 0 ? 100 : textZoom + delta));
         }

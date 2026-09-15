@@ -10,7 +10,7 @@ android {
         applicationId = "guyii.social.tools"
         minSdk = 24
         targetSdk = 36
-        versionCode = 16
-        versionName = "0.8.0"
+        versionCode = 17
+        versionName = "0.8.1"
     }
 }
