@@ -2,6 +2,10 @@
 
 给实体全键盘安卓手机用的 X（Twitter）客户端。在 **Unihertz Titan Lite2** 上开发和测试。
 
+<img src="screenshots/00-device.png" width="380">
+
+▶ **[演示视频（13 秒）](screenshots/demo.mp4)** —— 真机上用键盘浏览时间线、进入帖子详情
+
 ---
 
 ## 1. 这就是个网页套壳
@@ -25,7 +29,7 @@
 | --- | --- | --- |
 | ![](screenshots/01-nav-dark.png) | ![](screenshots/02-drawer-dark.png) | ![](screenshots/04-nav-light.png) |
 
-（页面内容是 X 的未登录落地页 —— 截图环境登录不了，能看的只有外面这层壳。）
+（这三张的页面内容是 X 的未登录落地页 —— 模拟器里登录不了，能看的只有外面这层壳。上面那张首图和演示视频是真机实拍。）
 
 ---
 
