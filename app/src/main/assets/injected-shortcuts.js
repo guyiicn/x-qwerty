@@ -41,6 +41,10 @@
       display: none !important;
     }
 
+    body {
+      padding-bottom: var(--guyii-chrome-bottom, 0px) !important;
+    }
+
     div[role="dialog"][data-guyii-composer] {
       padding-bottom: max(var(--guyii-chrome-bottom, 86px), env(safe-area-inset-bottom)) !important;
     }
@@ -72,6 +76,7 @@
     chromeBottom = Number(bottom) || 0;
     document.documentElement.style.setProperty("--guyii-chrome-bottom", chromeBottom + "px");
   };
+  const scrollTop = () => window.scrollY || document.documentElement.scrollTop || 0;
 
   const articles = () => Array.from(document.querySelectorAll("article"));
   const visibleArticles = () => articles().filter((el) => {
@@ -467,6 +472,7 @@
 
   window.__guyii = {
     setChrome: applyChrome,
+    scrollTop: scrollTop,
     go: goTab,
     compose: () => {
       const compose = document.querySelector('[data-testid="SideNav_NewTweet_Button"], a[href="/compose/post"]');

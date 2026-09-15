@@ -77,6 +77,9 @@ public class MainActivity extends Activity {
     private static final int BADGE = 0xfff4212e;
     private static final String PREFS = "guyii";
     private static final String KEY_THEME_MODE = "theme_mode";
+    private static final String KEY_BAR_MODE = "bar_mode";
+    private static final String KEY_IMMERSIVE = "immersive";
+    private static final int BAR_HEIGHT_DP = 78;
     private static final String[] THEME_LABELS = {"跟随", "浅色", "深色"};
     // "#" 开头的是分组标题。顺序按黑莓式键盘的实际可用性排，组合键沉到最后
     private static final String[][] SHORTCUTS = {
@@ -113,6 +116,8 @@ public class MainActivity extends Activity {
             {"z k / z j", "字号 ＋ / −"},
             {"z 0", "复位 100%"},
             {"#", "触屏"},
+            {"向下滚动", "底栏收起，让出整块高度"},
+            {"向上滚动 / 回到顶部", "底栏回来"},
             {"点已选中的 Tab", "回到顶部并刷新"},
             {"长按「通知」", "进 @我的"},
             {"长按「首页」", "打开抽屉"},
@@ -169,7 +174,12 @@ public class MainActivity extends Activity {
     private final List<TextView> drawerTexts = new ArrayList<>();
     private String profileHandle = "";
     private int themeMode = 0;
+    private int barMode = 0;          // 0 滚动自动隐藏，1 常驻
+    private boolean immersive = false;
+    private boolean barVisible = true;
     private final List<TextView> themeChips = new ArrayList<>();
+    private TextView barChip;
+    private TextView immersiveChip;
     private View shortcutsPanel;
     private LinearLayout shortcutsList;
     private TextView shortcutsTitle;
@@ -200,8 +210,13 @@ public class MainActivity extends Activity {
         setContentView(root);
         positionOverlay();
 
-        themeMode = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_THEME_MODE, 0);
+        android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        themeMode = prefs.getInt(KEY_THEME_MODE, 0);
+        barMode = prefs.getInt(KEY_BAR_MODE, 0);
+        immersive = prefs.getBoolean(KEY_IMMERSIVE, false);
         configureWebView();
+        installScrollListener();
+        applyImmersive();
         applyThemeCookie();
         webView.loadUrl(resolveStartUrl());
     }
@@ -342,6 +357,7 @@ public class MainActivity extends Activity {
         addDrawerAction("快捷键一览", this::openShortcuts);
 
         drawerPanel.addView(divider());
+        drawerPanel.addView(buildLayoutRow());
         drawerPanel.addView(buildThemeRow());
         drawerPanel.addView(buildZoomRow());
 
@@ -473,6 +489,57 @@ public class MainActivity extends Activity {
         });
         drawerList.addView(item);
         drawerTexts.add(item);
+    }
+
+    private View buildLayoutRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(18), dp(10), dp(18), dp(2));
+        barChip = toggleChip(v -> {
+            barMode = barMode == 0 ? 1 : 0;
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_BAR_MODE, barMode).apply();
+            applyBarMode();
+            updateLayoutChips();
+        });
+        immersiveChip = toggleChip(v -> {
+            immersive = !immersive;
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_IMMERSIVE, immersive).apply();
+            applyImmersive();
+            updateLayoutChips();
+        });
+        LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, dp(32), 1f);
+        LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, dp(32), 1f);
+        right.setMargins(dp(6), 0, 0, 0);
+        barChip.setLayoutParams(left);
+        immersiveChip.setLayoutParams(right);
+        row.addView(barChip);
+        row.addView(immersiveChip);
+        updateLayoutChips();
+        return row;
+    }
+
+    private TextView toggleChip(View.OnClickListener listener) {
+        TextView chip = new TextView(this);
+        chip.setTextSize(12);
+        chip.setTypeface(Typeface.DEFAULT_BOLD);
+        chip.setGravity(Gravity.CENTER);
+        chip.setOnClickListener(listener);
+        return chip;
+    }
+
+    private void updateLayoutChips() {
+        if (barChip == null) return;
+        boolean light = luminance(themeColor) > 0.5;
+        int idle = light ? 0xff5b6b78 : 0xff8b98a5;
+        barChip.setText(barMode == 0 ? "底栏自动隐藏" : "底栏常驻");
+        immersiveChip.setText(immersive ? "沉浸模式 开" : "沉浸模式 关");
+        boolean barOn = barMode == 0;
+        barChip.setTextColor(barOn ? ACCENT_FOREGROUND : idle);
+        barChip.setBackground(rounded(barOn ? ACCENT : 0x00000000, dp(16), barOn ? 0 : 0x33808080));
+        immersiveChip.setTextColor(immersive ? ACCENT_FOREGROUND : idle);
+        immersiveChip.setBackground(
+                rounded(immersive ? ACCENT : 0x00000000, dp(16), immersive ? 0 : 0x33808080));
     }
 
     private View buildThemeRow() {
@@ -933,8 +1000,8 @@ public class MainActivity extends Activity {
         themeColor = color;
         boolean light = luminance(color) > 0.5;
         int stroke = light ? 0x33000000 : 0x22ffffff;
-        // 白底上白 pill 看不出来，浅色时把底色压暗一档
-        int pill = light ? shade(color, 0.94f) : withAlpha(color, 0xf2);
+        // pill 浮在正文上，必须完全不透明；再和页面底色拉开一档才看得出边界
+        int pill = light ? mix(color, Color.BLACK, 0.06f) : mix(color, Color.WHITE, 0.10f);
         root.setBackgroundColor(color);
         bottomNav.setBackground(rounded(pill, dp(28), stroke));
         applyTabColors();
@@ -943,6 +1010,7 @@ public class MainActivity extends Activity {
             int drawerText = light ? 0xff0f1419 : 0xffffffff;
             for (TextView view : drawerTexts) view.setTextColor(drawerText);
             updateThemeChips();
+            updateLayoutChips();
         }
         if (shortcutsPanel != null) {
             shortcutsPanel.setBackgroundColor(color);
@@ -954,6 +1022,25 @@ public class MainActivity extends Activity {
         window.setStatusBarColor(color);
         window.setNavigationBarColor(color);
         setLightSystemBars(light);
+    }
+
+    private void applyImmersive() {
+        Window window = getWindow();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            android.view.WindowInsetsController controller = window.getInsetsController();
+            if (controller == null) return;
+            controller.setSystemBarsBehavior(
+                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            if (immersive) controller.hide(WindowInsets.Type.statusBars());
+            else controller.show(WindowInsets.Type.statusBars());
+        } else {
+            View decor = window.getDecorView();
+            int flags = decor.getSystemUiVisibility();
+            int mask = View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE;
+            if (immersive) flags |= mask;
+            else flags &= ~mask;
+            decor.setSystemUiVisibility(flags);
+        }
     }
 
     private void setLightSystemBars(boolean light) {
@@ -974,6 +1061,13 @@ public class MainActivity extends Activity {
 
     private double luminance(int color) {
         return (0.2126 * Color.red(color) + 0.7152 * Color.green(color) + 0.0722 * Color.blue(color)) / 255.0;
+    }
+
+    private int mix(int color, int target, float ratio) {
+        return Color.rgb(
+                clamp((int) (Color.red(color) * (1 - ratio) + Color.red(target) * ratio)),
+                clamp((int) (Color.green(color) * (1 - ratio) + Color.green(target) * ratio)),
+                clamp((int) (Color.blue(color) * (1 - ratio) + Color.blue(target) * ratio)));
     }
 
     private int shade(int color, float factor) {
@@ -1062,15 +1156,56 @@ public class MainActivity extends Activity {
         updateBottomMargin(bottomNav, dp(12) + bottom);
         updateBottomMargin(publishButton, dp(82) + bottom);
         updateBottomMargin(composeFab, dp(82) + bottom);
-        updateBottomMargin(webView, fullscreenView == null ? dp(78) + bottom : 0);
+        int reserved = barMode == 1 ? dp(BAR_HEIGHT_DP) : 0;
+        updateBottomMargin(webView, fullscreenView == null ? reserved + bottom : 0);
         updateTopMargin(webView, top);
         updateTopMargin(progressBar, top);
+        pushChrome();
         if (drawerPanel != null) {
             drawerPanel.setPadding(0, Math.max(systemTopInset, 0), 0, Math.max(systemBottomInset, 0));
         }
         if (shortcutsPanel != null) {
             shortcutsPanel.setPadding(0, Math.max(systemTopInset, 0), 0, Math.max(systemBottomInset, 0));
         }
+    }
+
+    // 原生是布局常量的唯一真源：把底栏占的高度下发给页面，让它在文档末尾补 padding
+    private void pushChrome() {
+        // 常驻模式下 WebView 已经让出了位置，页面不需要再补 padding
+        int bottomDp = barMode == 1 ? 0 : BAR_HEIGHT_DP + px2dp(Math.max(systemBottomInset, 0));
+        runPageAction("window.__guyii&&window.__guyii.setChrome&&window.__guyii.setChrome(0,"
+                + bottomDp + ");");
+    }
+
+    private int px2dp(int px) {
+        return (int) (px / getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private void installScrollListener() {
+        webView.setOnScrollChangeListener((v, x, y, oldX, oldY) -> {
+            if (barMode != 0 || drawerOpen || shortcutsOpen || composerDialogOpen) return;
+            if (y <= dp(8)) {
+                setBarVisible(true);
+                return;
+            }
+            int dy = y - oldY;
+            if (dy > dp(3)) setBarVisible(false);
+            else if (dy < -dp(10)) setBarVisible(true);
+        });
+    }
+
+    private void setBarVisible(boolean visible) {
+        if (barVisible == visible) return;
+        barVisible = visible;
+        float offset = visible ? 0f : dp(BAR_HEIGHT_DP) + Math.max(systemBottomInset, 0);
+        bottomNav.animate().translationY(offset).alpha(visible ? 1f : 0f).setDuration(160).start();
+        composeFab.animate().translationY(offset).alpha(visible ? 1f : 0f).setDuration(160).start();
+        publishButton.animate().translationY(offset).alpha(visible ? 1f : 0f).setDuration(160).start();
+    }
+
+    private void applyBarMode() {
+        if (barMode == 1) setBarVisible(true);
+        positionOverlay();
     }
 
     private void updateTopMargin(View view, int margin) {
