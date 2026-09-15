@@ -1,0 +1,14 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Android 构建产物
+*.apk
+*.aab
+*.dex
+
+# IDE
+.idea/
+*.iml
+.DS_Store

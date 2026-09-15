@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+ body{margin:0;background:#000;color:#fff;font:15px system-ui}
+ article{border-bottom:1px solid #2f3336;padding:18px 14px;min-height:150px}
+ a{color:#1d9bf0}
+ #log{position:fixed;left:0;right:0;bottom:0;background:#1d9bf0;color:#fff;
+      font-weight:700;padding:14px;text-align:center;font-size:18px}
+</style></head><body>
+<div data-testid="primaryColumn">
+  <article><div>推文 A</div><a href="/alice/status/1001">2小时</a>
+    <a href="/alice/status/1001/photo/1">图片链接（不该被选中）</a></article>
+  <article><div>推文 B</div><a href="/bob/status/1002">3小时</a></article>
+  <article><div>推文 C</div><a href="/carol/status/1003">4小时</a></article>
+  <article><div>推文 D</div><a href="/dave/status/1004">5小时</a></article>
+</div>
+<div id="log">等待操作</div>
+<script>
+document.addEventListener("click", function (e) {
+  var a = e.target.closest("a");
+  if (!a) return;
+  e.preventDefault();
+  document.getElementById("log").textContent = "点了 " + a.getAttribute("href");
+}, true);
+</script>
+</body></html>
